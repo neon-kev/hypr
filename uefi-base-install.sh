@@ -153,6 +153,8 @@ clear
 lsblk
 read -p "Enter the boot partition. (eg. /dev/sda4): " answerefi
 mkfs.fat -F 32 "$answerefi"
+mkdir -p /mnt/boot
+mount "$answerefi" /mnt/boot
 clear
 lsblk
 sleep 3s
@@ -160,7 +162,7 @@ clear
 clear
 #Replace kernel and kernel-header file and with your requirements (eg linux-zen linux-zen-headers or linux linux-headers)
 #Include intel-ucode/amd-ucode if you use intel/amd processor.
-MY_PARTUUID=$(blkid -s PARTUUID -o value /dev/sda2)
+MY_PARTUUID=$(blkid -s PARTUUID -o value "$rootpartition")
 echo "Installing Base system with lts kernel!!!"
 sleep 2s
 pacstrap /mnt base base-devel linux-zen linux-zen-headers intel-ucode nano linux-firmware git inotify-tools wireplumber reflector man sudo sddm
@@ -253,46 +255,6 @@ sleep 2s
 pacman -Sy --needed --noconfirm  efibootmgr networkmanager
 clear
 
-PACMAN_APPS=(
-    "ark" "base-devel" "brightnessctl" "dunst" "efibootmgr" "git" "foot"
-    "fastfetch" "gnome-system-monitor" "gwenview" "haruna" "inotify-tools"
-    "kdeconnect" "libreoffice-fresh" "linux-firmware" "linux-zen-headers"
-    "okular" "pacman-contrib" "pipewire" "pipewire-alsa" "pipewire-jack"
-    "pipewire-pulse" "plymouth" "reflector" "rofi" "sddm" "swww"
-    "ttf-jetbrains-mono-nerd" "ttf-twemoji" "typescript" "wget"
-    "wireguard-tools" "xdg-desktop-portal-hyprland" "xorg-xhost" "xorg-xauth"
-)
-
-# 2. Hyprland Ecosystem (-git versions via AUR)
-# Verified names on AUR for the latest git builds
-HYPR_GIT_APPS=(
-    "hyprland-git" "aquamarine-git" "hyprutils-git" "hyprwayland-scanner-git"
-    "hyprgraphics-git" "hypridle-git" "hyprlock-git" "hyprsunset-git"
-    "hyprpicker-git" "hyprcursor-git" "hyprpaper-git" "hyprshot-git"
-    "hyprpolkitagent-git" "hyprland-qt-support-git" "hyprqt6engine-git"
-    "waybar-git" "wlogout" "wallust" "waypaper" "hyprpicker-git seatd"
-)
-usermod -aG seat,video $username
-systemctl enable seatd
-systemctl enable --now seatd.service
-
-# 3. Third-Party / Binary Apps (AUR)
-USER_APPS=(
-    "floorp-bin" "ungoogled-chromium-bin" "vscodium-bin"
-    "clipvault" "powerdevil"
-)
-
-echo "--- Starting Installation ---"
-
-# Install Pacman Apps
-echo "Installing System Apps via Pacman..."
-sudo pacman -S --needed --noconfirm "${PACMAN_APPS[@]}"
-
-# Install Hypr-Git and User Apps
-echo "Installing Hyprland-Git and User Apps via Yay..."
-paru -S --needed --noconfirm "${HYPR_GIT_APPS[@]}" "${USER_APPS[@]}"
-
-echo "--- Installation Complete ---"
 
 lsblk
 echo "Enter the boot partition to install bootloader. (eg: /dev/sda4): "
@@ -309,16 +271,17 @@ echo "Installing systemd bootloader in /boot/ parttiton"
 
 bootctl install --path=/boot
 
-if [ -z "$PART_ID" ]; then
+if [ -z "$MY_PARTUUID" ]; then
     echo "Error: Could not find PARTUUID for /dev/sda2. Check your partition table!"
 else
+
 cat <<EOF > /boot/loader/entries/Arch-Zen.conf
 title   Arch-Zen
 linux   /vmlinuz-linux-zen
 initrd  /initramfs-linux-zen.img
-options root=PARTUUID=$PART_ID rw quiet splash loglevel=3
+options root=PARTUUID=$MY_PARTUUID rw quiet splash loglevel=3
 EOF
-    echo "Success: Arch-Zen.conf created with PARTUUID $PART_ID"
+    echo "Success: Arch-Zen.conf created with PARTUUID $MY_PARTUUID"
 fi
 
 cat <<EOF > /boot/loader/loader.conf
@@ -329,6 +292,7 @@ editor no
 EOF
 
 sleep 2s
+
 clear
 echo "Enabling NetworkManager"
 systemctl enable NetworkManager
@@ -357,6 +321,53 @@ $username ALL=(ALL) NOPASSWD: /usr/bin/hypridle
 $username ALL=(root) NOPASSWD: /home/$username/.config/hypr/scripts/updates-handler.sh
 EOF
 
+clear
+su - $username
+git clone https://aur.archlinux.org/paru.git
+cd paru
+makepkg -si
+
+PACMAN_APPS=(
+    "ark" "base-devel" "brightnessctl" "dunst" "efibootmgr" "git" "foot"
+    "fastfetch" "gnome-system-monitor" "gwenview" "haruna" "inotify-tools"
+    "kdeconnect" "libreoffice-fresh" "linux-firmware" "linux-zen-headers"
+    "okular" "pacman-contrib" "pipewire" "pipewire-alsa" "pipewire-jack"
+    "pipewire-pulse" "plymouth" "reflector" "rofi" "sddm" "swww"
+    "ttf-jetbrains-mono-nerd" "ttf-twemoji" "typescript" "wget"
+    "wireguard-tools" "xdg-desktop-portal-hyprland"
+)
+
+# 2. Hyprland Ecosystem (-git versions via AUR)
+# Verified names on AUR for the latest git builds
+HYPR_GIT_APPS=(
+    "hyprland-git" "aquamarine-git" "hyprutils-git" "hyprwayland-scanner-git"
+    "hyprgraphics-git" "hypridle-git" "hyprlock-git" "hyprsunset-git"
+    "hyprpicker-git" "hyprcursor-git" "hyprpaper-git" "hyprshot-git"
+    "hyprpolkitagent-git" "hyprland-qt-support-git" "hyprqt6engine-git"
+    "waybar-git" "wlogout" "wallust" "waypaper" "hyprpicker-git" "seatd-git"
+)
+
+
+# 3. Third-Party / Binary Apps (AUR)
+USER_APPS=(
+    "floorp-bin" "ungoogled-chromium-bin" "vscodium-bin"
+    "clipvault" "powerdevil"
+)
+
+echo "--- Starting Installation ---"
+
+# Install Pacman Apps
+echo "Installing System Apps via Pacman..."
+sudo pacman -S --needed --noconfirm "${PACMAN_APPS[@]}"
+
+# Install Hypr-Git and User Apps
+echo "Installing Hyprland-Git and User Apps via Yay..."
+paru -S --needed --noconfirm "${HYPR_GIT_APPS[@]}" "${USER_APPS[@]}"
+
+echo "--- Installation Complete ---"
+usermod -aG seat,video $username
+systemctl enable seatd
+systemctl enable --now seatd.service
 clear
 rm /post_base-install.sh
 exit
