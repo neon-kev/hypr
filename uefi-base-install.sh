@@ -153,8 +153,7 @@ clear
 lsblk
 read -p "Enter the boot partition. (eg. /dev/sda4): " answerefi
 mkfs.fat -F 32 "$answerefi"
-mkdir -p /mnt/boot
-mount "$answerefi" /mnt/boot
+
 clear
 lsblk
 sleep 3s
@@ -163,9 +162,11 @@ clear
 #Replace kernel and kernel-header file and with your requirements (eg linux-zen linux-zen-headers or linux linux-headers)
 #Include intel-ucode/amd-ucode if you use intel/amd processor.
 MY_PARTUUID=$(blkid -s PARTUUID -o value "$rootpartition")
+echo " your part id = $MY_PARTUUID"
+sleep 3s
 echo "Installing Base system with lts kernel!!!"
 sleep 2s
-pacstrap /mnt base base-devel linux-zen linux-zen-headers intel-ucode nano linux-firmware git inotify-tools wireplumber reflector man sudo sddm
+pacstrap /mnt base base-devel nano linux-firmware git inotify-tools wireplumber reflector man sudo sddm
 clear
 echo "generating fstab file"
 genfstab -U /mnt >> /mnt/etc/fstab
@@ -249,17 +250,12 @@ clear
 #if you are dualbooting, add os-prober with grub and efibootmgr
 echo "Installing grub efibootmgr and networkmanager"
 sleep 2s
-
-
-
-pacman -Sy --needed --noconfirm  efibootmgr networkmanager
 clear
-
 
 lsblk
 echo "Enter the boot partition to install bootloader. (eg: /dev/sda4): "
 read efipartition
-efidirectory="/boot"
+efidirectory="/mnt/boot"
 if [ ! -d "$efidirectory" ]; then
   mkdir -p "$efidirectory"
 fi
@@ -268,7 +264,7 @@ clear
 lsblk
 sleep 2s
 echo "Installing systemd bootloader in /boot/ parttiton"
-
+pacman -Sy --needed --noconfirm  efibootmgr networkmanager linux-zen linux-zen-headers intel-ucode
 bootctl install --path=/boot
 
 if [ -z "$MY_PARTUUID" ]; then
