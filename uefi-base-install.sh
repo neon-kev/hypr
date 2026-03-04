@@ -253,6 +253,47 @@ sleep 2s
 pacman -Sy --needed --noconfirm  efibootmgr networkmanager
 clear
 
+PACMAN_APPS=(
+    "ark" "base-devel" "brightnessctl" "dunst" "efibootmgr" "git" "foot"
+    "fastfetch" "gnome-system-monitor" "gwenview" "haruna" "inotify-tools"
+    "kdeconnect" "libreoffice-fresh" "linux-firmware" "linux-zen-headers"
+    "okular" "pacman-contrib" "pipewire" "pipewire-alsa" "pipewire-jack"
+    "pipewire-pulse" "plymouth" "reflector" "rofi" "sddm" "swww"
+    "ttf-jetbrains-mono-nerd" "ttf-twemoji" "typescript" "wget"
+    "wireguard-tools" "xdg-desktop-portal-hyprland" "xorg-xhost" "xorg-xauth"
+)
+
+# 2. Hyprland Ecosystem (-git versions via AUR)
+# Verified names on AUR for the latest git builds
+HYPR_GIT_APPS=(
+    "hyprland-git" "aquamarine-git" "hyprutils-git" "hyprwayland-scanner-git"
+    "hyprgraphics-git" "hypridle-git" "hyprlock-git" "hyprsunset-git"
+    "hyprpicker-git" "hyprcursor-git" "hyprpaper-git" "hyprshot-git"
+    "hyprpolkitagent-git" "hyprland-qt-support-git" "hyprqt6engine-git"
+    "waybar-git" "wlogout" "wallust" "waypaper" "hyprpicker-git seatd"
+)
+usermod -aG seat,video $username
+systemctl enable seatd
+systemctl enable --now seatd.service
+
+# 3. Third-Party / Binary Apps (AUR)
+USER_APPS=(
+    "floorp-bin" "ungoogled-chromium-bin" "vscodium-bin"
+    "clipvault" "powerdevil"
+)
+
+echo "--- Starting Installation ---"
+
+# Install Pacman Apps
+echo "Installing System Apps via Pacman..."
+sudo pacman -S --needed --noconfirm "${PACMAN_APPS[@]}"
+
+# Install Hypr-Git and User Apps
+echo "Installing Hyprland-Git and User Apps via Yay..."
+paru -S --needed --noconfirm "${HYPR_GIT_APPS[@]}" "${USER_APPS[@]}"
+
+echo "--- Installation Complete ---"
+
 lsblk
 echo "Enter the boot partition to install bootloader. (eg: /dev/sda4): "
 read efipartition
